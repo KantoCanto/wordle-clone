@@ -2,14 +2,20 @@
 
 import { useState, useEffect } from "react";
 import generateWord from "@/controllers/generateWord";
+import Grid from "@/app/components/UI/grid";
+import Modal from "../components/UI/modal";
 
-export default function Play() {
+const Play: React.FC = () => {
   //state wall
   const [gameStarted, setGameStarted] = useState(false);
   const [currentLife, setCurrentLife] = useState(0);
   const [gameWord, setGameWord] = useState("");
   const [userGuessWord, setUserGuessWord] = useState("");
   const [userWin, setUserWin] = useState(false);
+  const [submittedGuess, setSubmittedGuess] = useState("");
+  const [gameOver, setGameOver] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [gridKey, setGridKey] = useState(0);
 
   //log changes when game state updates
   useEffect(() => {
@@ -18,7 +24,14 @@ export default function Play() {
     console.log("Lifes: ", currentLife);
     console.log("userGuessWord: ", userGuessWord);
     console.log("userWin: ", userWin);
-  }, [gameStarted, currentLife, gameWord, userGuessWord, userWin]);
+  }, [
+    gameStarted,
+    currentLife,
+    gameWord,
+    userGuessWord,
+    submittedGuess,
+    userWin,
+  ]);
 
   //game start
   function gameStart() {
@@ -39,87 +52,87 @@ export default function Play() {
     const tempWord = generateWord().toString();
     setGameWord(tempWord);
     setGameStarted(true);
+    setShowModal(false);
+    setGameOver(false);
+    setSubmittedGuess("");
+    setUserGuessWord("");
+    setGridKey((prevKey) => prevKey + 1);
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
 
-    if (value.length <= 5) {
+    if (value.length <= gameWord.length) {
       setUserGuessWord(value);
     }
   };
 
-  function checkLetters(gameWord: string, userGuessWord: string) {
-    const guessArray = userGuessWord.split("");
-    console.log("guessArray: ", guessArray);
-    const wordArray = gameWord.split("");
-    console.log("wordArray: ", wordArray);
-
-    return guessArray.map((letter, index) => {
-      if (letter === wordArray[index]) {
-        return "correct";
-      } else if (wordArray.includes(letter)) {
-        return "misplaced";
-      } else {
-        return "wrong";
-      }
-    });
-  }
-
-  const feedback = checkLetters(gameWord, userGuessWord);
-
   const handleSubmit = () => {
-    const checkUserGuessWord = userGuessWord.toString().toUpperCase();
-    const checkGameWord = gameWord.toString().toUpperCase();
+    if (userGuessWord.length === gameWord.length) {
+      setSubmittedGuess(userGuessWord); // Only update the grid on submit
+      const checkUserGuessWord = userGuessWord.toUpperCase();
+      const checkGameWord = gameWord.toUpperCase();
 
-    if (checkUserGuessWord === checkGameWord) {
-      setUserWin(true);
+      if (checkUserGuessWord === checkGameWord) {
+        setUserWin(true);
+        setGameOver(true);
+        setShowModal(true);
+      } else {
+        setCurrentLife((prevLife) => {
+          const newLife = prevLife - 1;
+          if (newLife === 0) {
+            setGameOver(true);
+            setShowModal(true);
+          }
+          return newLife;
+        });
+      }
+      setUserGuessWord("");
     } else {
-      setCurrentLife((prevLife) => prevLife - 1);
+      console.log("Guess must be the same length as the game word.");
     }
   };
 
+  const closeModal = () => {
+    setShowModal(false);
+  };
+
   return (
-    <div className="m-4 flex flex-col min-h-[87vh] ">
-      <div className="grid grif-cols-5 gap-4 mt-4">
-        {userGuessWord.split("").map((letter, index) => (
-          <div
-            key={index}
-            className={`border p-4 text-center text-lg font-bold ${
-              feedback[index] === "correct"
-                ? "bg-green-500 text-white"
-                : feedback[index] === "misplaced"
-                ? "bg-yellow-500 text-white"
-                : "bg-gray-500 text-white"
-            }`}
-          >
-            {letter}
+    <div className="min-h-[calc(100vh-15vh)] flex justify-center">
+      {!gameStarted && (
+        <button
+          onClick={gameStart}
+          className="mx-auto my-auto bg-blue-700 p-2 rounded-lg hover:bg-blue-500"
+        >
+          Start Wordling!
+        </button>
+      )}
+
+      {gameStarted && (
+        <div className="flex flex-col items-center">
+          <div className="min-w-[calc(100vw-15vw)] flex flex-col items-center justify-center">
+            <Grid
+              gridKey={gridKey}
+              rows={6}
+              collumns={gameWord.length}
+              gameWord={gameWord}
+              userGuessWord={submittedGuess}
+            />
           </div>
-        ))}
-      </div>
-      <div className="flex justify-center">
-        {!gameStarted && (
-          <button
-            onClick={gameStart}
-            className="mx-auto w-32 bg-blue-700 p-2 rounded-lg hover:bg-blue-500"
-          >
-            Start Wordling!
-          </button>
-        )}
+          <input
+            className="bg-gray- w-72  placeholder-slate-500 text-black p-2 text-center rounded-lg focus:outline-none"
+            placeholder="Type your word here!"
+            maxLength={gameWord.length}
+            value={userGuessWord}
+            onChange={handleChange}
+            disabled={gameOver}
+          ></input>
 
-        {gameStarted && (
-          <div className="flex flex-col space-y-4">
-            <input
-              className="bg-gray-300 placeholder-slate-500 text-black p-2 text-center rounded-lg focus:outline-none"
-              placeholder="Type your word here!"
-              maxLength={5}
-              value={userGuessWord}
-              onChange={handleChange}
-            ></input>
-
+          <div className="flex flex-col my-4 space-y-2">
             <button
               onClick={handleSubmit}
               className="mx-auto w-32 bg-green-700 p-2 rounded-lg hover:bg-green-500"
+              disabled={gameOver || userGuessWord.length !== gameWord.length}
             >
               Submit
             </button>
@@ -131,8 +144,19 @@ export default function Play() {
               Wordle Again!
             </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {showModal && (
+        <Modal
+          message={
+            userWin ? "Congratulations, you win!" : "Game Over! You lost."
+          }
+          onClose={closeModal}
+        />
+      )}
     </div>
   );
-}
+};
+
+export default Play;
