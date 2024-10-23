@@ -3,7 +3,7 @@ import localFont from "next/font/local";
 
 import "./globals.css";
 
-import Header from "@/app/components/layout/header";
+//import Header from "@/app/components/layout/header";
 //import Footer from "./components/layout/footer";
 
 const geistSans = localFont({
@@ -30,10 +30,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head />
-      <body className="overflow-hidden">
-        <Header />
-        {children}
-      </body>
+      <body className="overflow-hidden">{children}</body>
     </html>
   );
 }

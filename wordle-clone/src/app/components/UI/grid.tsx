@@ -4,74 +4,94 @@ import { useEffect, useState } from "react";
 interface GridProps {
   rows: number;
   collumns: number;
+  gridKey: number;
   gameWord: string;
   userGuessWord: string;
-  gridKey: number;
+  submittedGuess: string;
+  updateDisabledKeys: (newDisabledKeys: string[]) => void;
 }
 
 const Grid: React.FC<GridProps> = ({
   rows,
   collumns,
   gameWord,
-  userGuessWord,
+  submittedGuess,
   gridKey,
+  userGuessWord,
+  updateDisabledKeys,
 }) => {
-  const [userGuesses, setUserGuesses] = useState<string[]>([]); //array to store guesses
+  const [userGuesses, setUserGuesses] = useState<string[]>([]); // array to store guesses
 
-  //push the userGuessWord to the userGuesses on every submission
   useEffect(() => {
-    if (userGuessWord) {
-      setUserGuesses((prevGuesses) => [...prevGuesses, userGuessWord]);
-    }
-  }, [userGuessWord]);
+    if (submittedGuess) {
+      setUserGuesses((prevGuesses) => [...prevGuesses, submittedGuess]);
 
+      // Step 1: Convert the game word to an array of letters
+      const gameWordArray = gameWord.toUpperCase().split("");
+      const submittedArray = submittedGuess.toUpperCase().split("");
+
+      // Step 2: Filter out letters that are not included in the game word
+      const wrongLetters = submittedArray.filter(
+        (letter) => !gameWordArray.includes(letter) // Disable only letters not in the game word
+      );
+
+      console.log("wrongLetters: ", wrongLetters); // Debugging output
+
+      // Step 3: Update the disabled keys
+      updateDisabledKeys(wrongLetters); // Update disabled keys with wrong letters
+    }
+  }, [submittedGuess, gameWord]);
+
+  // Reset user guesses when gridKey changes
   useEffect(() => {
     setUserGuesses([]);
   }, [gridKey]);
 
-  const checkLetters = (guess: string, gameWord: string) => {
-    const result = Array(collumns).fill(""); // Initialize result array
-    const wordArray = gameWord.split("");
-    const guessArray = guess.split("");
+  const grid = Array.from({ length: rows }).map((_, rowIndex) => {
+    const guess =
+      userGuesses[rowIndex] ||
+      (rowIndex === userGuesses.length ? userGuessWord : "");
 
-    guessArray.forEach((letter, index) => {
-      if (letter === wordArray[index]) {
-        result[index] = "correct"; // Letter is in the correct place
-      } else if (wordArray.includes(letter)) {
-        result[index] = "misplaced"; // Letter is in the word but not in the right place
-      } else {
-        result[index] = "wrong"; // Letter is not in the word
-      }
-    });
+    // Step 1: Split the gameWord and guess into arrays and check for feedback
+    const gameWordArray = gameWord.toUpperCase().split("");
+    const submittedArray = guess.toUpperCase().split("");
 
-    return result;
-  };
+    const isSubmitted = userGuesses[rowIndex] !== undefined;
 
-  const grid = Array.from({ length: rows }).map((_, rowIndex) => (
-    <div key={rowIndex} className="grid grid-cols-5 gap-2 my-1">
-      {Array.from({ length: collumns }).map((_, colIndex) => {
-        const guess = userGuesses[rowIndex] || ""; // Get the user's guess for this row
-        const feedback = guess ? checkLetters(guess, gameWord) : []; // Get feedback if there's a guess
+    // Step 2: Create letterStatuses for each guess
+    const letterStatuses = isSubmitted
+      ? submittedArray.map((letter, colIndex) => {
+          if (letter === gameWordArray[colIndex]) {
+            return "correct"; // Exact match
+          } else if (gameWordArray.includes(letter)) {
+            return "misplaced"; // Letter exists but is misplaced
+          } else {
+            return "wrong"; // Letter does not exist in the word
+          }
+        })
+      : [];
 
-        return (
+    return (
+      <div key={rowIndex} className="grid grid-cols-5 gap-2 my-1">
+        {Array.from({ length: collumns }).map((_, colIndex) => (
           <div
             key={colIndex}
             className={`w-16 h-16 border-2 border-gray-500 flex items-center justify-center text-lg font-bold ${
-              feedback[colIndex] === "correct"
+              isSubmitted && letterStatuses[colIndex] === "correct"
                 ? "bg-green-500"
-                : feedback[colIndex] === "misplaced"
+                : isSubmitted && letterStatuses[colIndex] === "misplaced"
                 ? "bg-yellow-500"
-                : feedback[colIndex] === "wrong"
+                : isSubmitted && letterStatuses[colIndex] === "wrong"
                 ? "bg-red-500"
                 : ""
             }`}
           >
-            {guess[colIndex] || ""} {/* Show the letter or keep it empty */}
+            {guess[colIndex] || ""}
           </div>
-        );
-      })}
-    </div>
-  ));
+        ))}
+      </div>
+    );
+  });
 
   return <div className="my-4">{grid}</div>;
 };
